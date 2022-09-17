@@ -16,7 +16,8 @@ const REGION: &str = "eu-central-1";
 async fn main() -> Result<(), Error> {
     dotenv().ok();
 
-    let client = get_aws_client(REGION)?;
+    let config = aws_config::load_from_env().await;
+    let client = Client::new(&config);
 
     let keys = list_keys(&client, BUCKET_NAME).await.unwrap();
     println!("List:\n{}", keys.join("\n"));
@@ -63,24 +64,4 @@ async fn upload_file(client: &Client, bucket_name: &str, path: &Path) -> Result<
     request.send().await;
 
     Ok(())
-}
-
-fn get_aws_client(region: &str) -> Result<Client, Error> {
-    let key_id = env::var(ENV_CRED_KEY_ID)
-        .context("Missing S3_KEY_ID")
-        .unwrap();
-    let key_secret = env::var(ENV_CRED_KEY_SECRET)
-        .context("Missing S3_KEY_SECRET")
-        .unwrap();
-
-    let cred = Credentials::new(key_id, key_secret, None, None, BUCKET_NAME);
-
-    let region = Region::new(region.to_string());
-    let conf_builder = config::Builder::new()
-        .region(region)
-        .credentials_provider(cred);
-    let conf = conf_builder.build();
-
-    let client = Client::from_conf(conf);
-    Ok(client)
 }
